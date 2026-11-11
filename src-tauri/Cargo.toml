@@ -1,0 +1,37 @@
+[package]
+name = "loki"
+version = "0.1.0"
+description = "LOKI - Local Only Key Inventory"
+authors = ["Sainath Belagavi"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "loki_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+argon2 = "0.5.3"
+chacha20poly1305 = "0.10.1"
+hmac = "0.12.1"
+sha2 = "0.10.9"
+rand = "0.9"
+serde_json = "1.0.154"
+zeroize = { version = "1.8.2", features = ["derive"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+arboard = { version = "3.7.0", default-features = false }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

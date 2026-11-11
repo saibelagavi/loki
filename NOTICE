@@ -1,0 +1,13 @@
+LOKI - Local Only Key Inventory
+Copyright 2026 Sainath Belagavi
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product bundles the following third-party work:
+
+Exo 2 font (src/assets/fonts/exo2-latin-600-700.woff2)
+Copyright 2013 The Exo 2 Project Authors (https://github.com/googlefonts/Exo-2.0)
+Licensed under the SIL Open Font License, Version 1.1 (see src/assets/fonts/Exo2-OFL.txt)
+
+Third-party Rust crates and npm packages used to build LOKI are listed in src-tauri/Cargo.lock
+and package-lock.json, each under its own license.
