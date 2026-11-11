@@ -1,91 +1,180 @@
-# LOKI — Local Only Key Inventory
+<div align="center">
 
-An encrypted, offline inventory of your `.env` files across projects, branches and deployment
-stages, for Windows. It answers the push-day question fast:
+<img src="assets/loki-icon.svg" width="96" alt="LOKI icon">
+
+# LOKI
+
+**Local Only Key Inventory**
+
+An encrypted, offline home for every `.env` file you own, built for the day you push to production.
+
+[![CI](https://github.com/saibelagavi/loki/actions/workflows/ci.yml/badge.svg)](https://github.com/saibelagavi/loki/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-5b4fd6.svg)](LICENSE)
+![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-1d75af.svg)
+![Network: none](https://img.shields.io/badge/network-none-ce3835.svg)
+
+[Features](#features) · [Install](#install) · [Security](#security) · [Build from source](#build-from-source) · [Contributing](#contributing)
+
+<img src="docs/screenshots/hero.png" alt="LOKI compare matrix: keys as rows, deployment targets as columns, each cell marked same, differs, missing, empty or extra" width="900">
+
+</div>
+
+---
+
+## Why LOKI
+
+On release day you open five `.env` files side by side and hunt, by eye, for the key staging has and
+production forgot, the `sk_test_` key that slipped into production, the `localhost` URL nobody
+noticed. LOKI does that hunt for you, and answers one question fast:
 
 > **What is different between staging and production, and what is missing?**
 
-LOKI never touches the network. Your values are encrypted on your machine with a master password
-that is never stored, and the app works with the network cable pulled.
-
-![Compare matrix](docs/screenshots/compare-dark.png)
+- **Offline by design.** No network code at all. It works with the cable pulled.
+- **Encrypted at rest.** Argon2id + XChaCha20-Poly1305; your master password is never stored.
+- **Masked by default.** You see which values differ, not the values themselves, until you ask.
+- **Small and fast.** A ~5 MB app that opens in under half a second.
 
 ## Features
 
-- **Compare matrix.** Rows are keys, columns are targets (branch + stage). Every cell says
-  `same`, `differs`, `missing`, `empty` or `extra` against a baseline, without decrypting
-  anything: equality comes from HMAC fingerprints. Keyboard first, and smooth with 500 keys × 6
-  targets.
-- **Push-day check.** Staging → production findings: missing keys, required keys, `localhost` or
-  test API keys in production, secrets shared across stages, `DEBUG=true`. Rules can be switched
-  off or extended. Export a Markdown checklist (keys only, never values).
-- **Overview.** Release readiness for every project, drift (which `.env` files on disk changed
-  since you imported them) and rotation reminders.
-- **Diff checker.** Compare real values between a target, a version, a file or pasted text, with
-  character-level highlighting. Values appear only when you ask, and hide again on a timer.
-- **Versions.** Every import is an immutable snapshot. Diff any two, restore, re-import a changed
-  file in one click.
-- **Passwords.** A small password store for the logins that are not in a `.env` (database
-  consoles, cloud root accounts, registrars), with weak and reused password detection.
-- **Secure share.** Hand a `.env` to a teammate as an encrypted `.lokishare` file that opens only
-  with a one-time pass key.
-- **Import from anywhere.** Pick a file, drop it, paste it, or scan a project folder (stage
-  guessed from the file name, branch read from `.git/HEAD`).
-- **Export** a full `.env`, a `.env.example`, or just the keys production is missing.
-- **Encrypted backups**, an audit log of every reveal, copy and export, auto-lock, and an option
-  to hide the window from screenshots and screen sharing.
+### 🧭 Push-day overview
+Every project on one screen: which ones would ship with keys missing in production, which `.env`
+files on disk changed since you last imported them (one click to re-import), and which secrets
+and passwords are overdue for rotation.
 
-| Overview | Diff checker | Passwords |
-|---|---|---|
-| ![Overview](docs/screenshots/overview.png) | ![Diff checker](docs/screenshots/diff-checker.png) | ![Passwords](docs/screenshots/passwords.png) |
+<img src="docs/screenshots/overview.png" alt="Push-day overview with release readiness, drift and rotation reminders" width="860">
 
-## Security in one paragraph
+### 🔲 Compare matrix
+Rows are keys, columns are your targets (branch + stage), one column is the baseline. Every cell
+says `= same`, `≠ differs`, `○ missing`, `∅ empty` or `+ extra`, computed from encrypted
+fingerprints without decrypting anything. Sticky headers, filters, search, full keyboard control
+(arrows, <kbd>Enter</kbd> to reveal, <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy), and smooth with
+500 keys × 6 targets.
 
-Argon2id (64 MiB, 3 passes) turns your master password into two keys: one for
-XChaCha20-Poly1305 encryption of every value, one for HMAC-SHA256 fingerprints. Each value has a
-fresh random nonce and is bound to its row, so ciphertexts cannot be swapped. The interface
-receives key names, statuses and fingerprints; a value reaches it only when you click Reveal, and
-every reveal is logged. Copies go to the clipboard from the Rust core, stay out of Windows
-clipboard history and clear themselves. Details, limits and how to report a problem:
-[SECURITY.md](SECURITY.md).
+### ✅ Push-day check
+Pick *from* and *to* (say staging → production) and get findings grouped by severity:
+
+| Severity | What it catches |
+|---|---|
+| **Error** | keys missing in the target; keys marked required for that stage but missing or empty |
+| **Warning** | `localhost`, `127.0.0.1` or `example.com` in production; `sk_test_` / `pk_test_` keys in production; placeholder words; a secret shared between production and another stage; `DEBUG=true` or `NODE_ENV=development` |
+| **Info** | keys that exist only in the target (possibly stale) |
+
+Switch rules off or add your own, then export a Markdown checklist (keys only, never values) or
+just the missing keys to paste into your deploy platform.
+
+<img src="docs/screenshots/push-check.png" alt="Push check from staging to production with errors and warnings" width="860">
+
+### ≠ Diff checker
+Compare **real values** between any two sources: a target, a specific version, a `.env` file on
+disk, or pasted text, even across projects. LOKI first tells you what differs and hints like
+*"only a trailing slash differs"*. Values appear only when you ask, with character-level
+highlighting, and hide again on a visible countdown.
+
+<img src="docs/screenshots/diff-checker.png" alt="Diff checker showing character-level differences between staging and production values" width="860">
+
+### 🕓 Versions and history
+Every import is an immutable version. Diff any two versions (added, removed, changed), restore an
+old one as a new version, or re-import a file in one click (skipped if its SHA-256 is unchanged).
+
+<img src="docs/screenshots/history.png" alt="History of production versions with a diff between version 1 and version 2" width="860">
+
+### 🔑 Passwords
+A small password store for logins that are not in a `.env`: database consoles, cloud root
+accounts, DNS, payment dashboards. Weak and reused passwords are flagged, a generator is built
+in, and copies stay out of Windows clipboard history and clear themselves.
+
+<img src="docs/screenshots/passwords.png" alt="Password store with weak and reused flags and a revealed password with countdown" width="860">
+
+### 🔍 Search across projects
+<kbd>Ctrl</kbd>+<kbd>K</kbd>: *where is `REDIS_URL` used, and is it the same everywhere?* Pick a
+result to jump straight to that cell in the compare matrix, highlighted.
+
+<img src="docs/screenshots/search.png" alt="Key search across projects showing where REDIS_URL is used and whether its values agree" width="860">
+
+### 📦 Secure share
+Hand a `.env` to a teammate as an encrypted `.lokishare` file that opens only with a one-time
+pass key LOKI generates (125 bits, shown once, never stored). Choose which keys, set an expiry,
+and send the file and the pass key through different channels.
+
+<img src="docs/screenshots/share.png" alt="Share securely dialog with key selection and expiry" width="860">
+
+### And also
+- **Import from anywhere:** pick a file, drop it on the window, paste it, or scan a project folder
+  (stage guessed from the file name, branch read straight from `.git/HEAD`).
+- **Export** a full `.env`, a `.env.example` (keys and comments, values blank), or only the keys
+  production is missing.
+- **Key notes:** what a key is for, which stages require it, when it was last rotated.
+- **Encrypted `.loki` backups** under their own password, including passwords.
+- **Audit log** of every reveal, copy, export, share and delete (key names only, never values).
+- **Auto-lock** when idle or minimized, and an option to hide the window from screenshots and
+  screen sharing.
+- **Dark and light themes** that follow Windows, WCAG AA contrast, full keyboard use.
+
+<table>
+<tr>
+<td><img src="docs/screenshots/unlock.png" alt="Unlock screen" width="420"></td>
+<td><img src="docs/screenshots/targets.png" alt="Targets and key notes" width="420"></td>
+</tr>
+</table>
 
 ## Install
 
-Download the installer from the [Releases](../../releases) page, or the Microsoft Store (coming
-soon). Requires Windows 10 or 11; the installer includes WebView2 for offline machines.
+1. Download `LOKI_x.y.z_x64-setup.exe` (or the `.msi`) from the
+   [latest release](https://github.com/saibelagavi/loki/releases/latest). A Microsoft Store
+   listing is on the way.
+2. Run it. Windows SmartScreen may warn because the installer is not code-signed yet: choose
+   **More info → Run anyway** only if you downloaded it from this repository's Releases page.
+3. Open LOKI and choose a master password. **Remember it: LOKI cannot recover it.**
+4. Add a project, then import its `.env` files, or use **Scan folder** on the project directory.
 
-Your vault lives in `%LOCALAPPDATA%\LOKI\loki.db`. Uninstalling LOKI never removes it.
+Works on Windows 10 and 11. The installer includes WebView2, so offline machines are fine.
+Your vault lives in `%LOCALAPPDATA%\LOKI\loki.db`; uninstalling LOKI never deletes it.
+
+## Security
+
+Argon2id (64 MiB, 3 passes) turns your master password into two keys: one encrypts every value
+with XChaCha20-Poly1305 (fresh nonce, bound to its row), the other computes HMAC-SHA256
+fingerprints so LOKI can tell *whether* values match without decrypting them. The interface gets
+key names, statuses and fingerprints; a value reaches it only when you click Reveal, and every
+reveal is logged. A build check fails if anything in the app could open a network socket.
+
+Full design, limits and how to report a vulnerability privately: **[SECURITY.md](SECURITY.md)**.
+LOKI collects nothing: **[PRIVACY.md](PRIVACY.md)**.
 
 ## Build from source
 
-Requirements: Node.js 20+, Rust (stable), and the Visual Studio C++ Build Tools.
+Requirements: Windows 10 or 11, [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs)
+(stable), and the Visual Studio C++ Build Tools.
 
 ```powershell
+git clone https://github.com/saibelagavi/loki.git
+cd loki
 npm install
-npm run tauri dev        # run in development
-npm run tauri build      # installers in src-tauri\target\release\bundle
+$env:LOKI_DATA_DIR = "$env:TEMP\loki-dev"   # try it on a scratch vault, not your real one
+npm run tauri dev                           # run in development
+npm run tauri build                         # installers in src-tauri\target\release\bundle
 ```
 
-Checks that run in CI:
+The checks CI runs on every push:
 
 ```powershell
-npm test                 # Vitest
-npm run lint
-npm run size             # frontend size budget
-npm run check:offline    # fails if anything in the production build could open a socket
-cd src-tauri; cargo test; cargo clippy --all-targets -- -D warnings
+npm run lint; npm test; npm run build; npm run size; npm run check:offline
+cd src-tauri; cargo clippy --all-targets -- -D warnings; cargo test --lib
 ```
 
-To try LOKI without touching your real vault, set `LOKI_DATA_DIR` to a scratch folder.
+**Stack:** Tauri 2 · Rust (RustCrypto, SQLite) · React · TypeScript · Tailwind CSS.
 
-## Privacy
+## Contributing
 
-LOKI collects nothing and sends nothing. See [PRIVACY.md](PRIVACY.md).
+Bug reports, ideas and pull requests are welcome. Fork the repository and open a pull request;
+for a new feature, please open a feature request first so we can agree on it. Every change is
+reviewed and merged by the maintainer. See **[CONTRIBUTING.md](CONTRIBUTING.md)** and the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-[Apache License 2.0](LICENSE). Copyright 2026 Sainath Belagavi. The Exo 2 font is bundled under
-the SIL Open Font License; see [NOTICE](NOTICE).
+[Apache License 2.0](LICENSE) © 2026 Sainath Belagavi. The bundled Exo 2 font is under the SIL
+Open Font License; see [NOTICE](NOTICE).
 
-LOKI stands for Local Only Key Inventory. It is an independent project and is not affiliated with
+LOKI stands for *Local Only Key Inventory*. It is an independent project and is not affiliated with
 any other product or company that uses the name Loki.

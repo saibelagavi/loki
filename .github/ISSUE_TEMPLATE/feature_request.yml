@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a feature. Please wait for a reply before opening a pull request.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LOKI stays small, offline and auditable. A feature that needs the network, a server or an
+        account will not fit. Describe the problem first; the solution can be discussed.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What do you struggle with today (for example on release day)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - "Yes, I would like to open a pull request"
+        - "No, just suggesting it"
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Fits LOKI's rules
+      options:
+        - label: It works fully offline and adds no networking dependency.
+          required: true
+        - label: It never shows or logs a secret value unless the user explicitly asks.
+          required: true

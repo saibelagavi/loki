@@ -232,7 +232,7 @@ function ReadinessRow({ p, onOpen }: { p: ProjectHealth; onOpen: (id: number, ta
   return (
     <tr>
       <td className="font-medium">
-        <button className="btn btn-quiet btn-sm font-medium" onClick={() => onOpen(p.id, "compare")}>
+        <button className="btn btn-quiet btn-sm justify-start text-left font-medium whitespace-normal" onClick={() => onOpen(p.id, "compare")}>
           {p.name}
         </button>
       </td>

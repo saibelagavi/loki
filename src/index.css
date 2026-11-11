@@ -91,7 +91,7 @@ body {
 /* Shared building blocks. Scale: 12 / 13 / 15 / 18 / 24 px. Sentence case everywhere. */
 @layer components {
   .btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-chalk hover:border-focus disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-chalk hover:border-focus disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
     @apply border-focus bg-focus font-medium text-ink hover:brightness-110;
@@ -182,6 +182,7 @@ table.data-table {
 }
 table.data-table th {
   text-align: left;
+  white-space: nowrap;
   font-weight: 500;
   color: var(--muted);
   font-size: 12px;
