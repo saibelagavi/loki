@@ -285,18 +285,38 @@ export interface CredentialInput {
 
 export interface ShareCreated {
   path: string;
-  passKey: string;
+  envCount: number;
   keyCount: number;
   expiresAt: string | null;
 }
 
+/** One .env version to put in a share; keys = null means every key. */
+export interface ShareSelection {
+  snapshotId: number;
+  keys: string[] | null;
+}
+
+/** Where one .env from an opened share goes; targetId = null means "the matching project and target". */
+export interface ShareMapping {
+  index: number;
+  targetId: number | null;
+}
+
+export interface SharePreviewItem {
+  index: number;
+  label: string;
+  project: string | null;
+  branch: string | null;
+  stage: Stage | null;
+  keys: { key: string; isEmpty: boolean; hasComment: boolean }[];
+}
+
 export interface SharePreview {
   token: string;
-  keys: { key: string; isEmpty: boolean; hasComment: boolean }[];
+  items: SharePreviewItem[];
   createdAt: string;
   expiresAt: string | null;
   expired: boolean;
-  source: string;
   note: string | null;
 }
 

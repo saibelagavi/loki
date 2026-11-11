@@ -54,6 +54,12 @@ export const IconCopy = (p: SVGProps<SVGSVGElement>) => (
     <path d="M10.5 5.5v-1A1.5 1.5 0 0 0 9 3H4.5A1.5 1.5 0 0 0 3 4.5V9a1.5 1.5 0 0 0 1.5 1.5h1" />
   </svg>
 );
+export const IconShare = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M8 10V2.5M5 5l3-3 3 3" />
+    <path d="M3 9v3.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V9" />
+  </svg>
+);
 export const IconClose = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="m4 4 8 8M12 4l-8 8" />

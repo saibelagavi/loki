@@ -115,6 +115,7 @@ pub fn run() {
             commands::v2::credential_reveal,
             commands::v2::credential_copy,
             commands::v2::password_generate,
+            commands::v2::share_generate_key,
             commands::v2::share_create,
             commands::v2::share_open,
             commands::v2::share_import,

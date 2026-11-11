@@ -252,7 +252,7 @@ export default function History({ targets, reloadTargets, goTo }: PageProps) {
         </section>
       )}
 
-      {sharing && target && <ShareDialog snapshotId={sharing.id} label={`${target.branch} / ${target.stage} v${sharing.version}`} onClose={() => setSharing(null)} />}
+      {sharing && target && <ShareDialog preselect={{ snapshotId: sharing.id, label: `${target.branch} / ${target.stage} v${sharing.version}` }} onClose={() => setSharing(null)} />}
       {restoring && (
         <Confirm
           title={`Restore version ${restoring.version}`}

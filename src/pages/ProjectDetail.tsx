@@ -118,7 +118,7 @@ export default function ProjectDetail({ project, targets, reloadTargets, reloadP
       <KeyNotes project={project} />
 
       {sharing && sharing.currentSnapshotId !== null && (
-        <ShareDialog snapshotId={sharing.currentSnapshotId} label={`${sharing.branch} / ${sharing.stage} v${sharing.currentVersion}`} onClose={() => setSharing(null)} />
+        <ShareDialog preselect={{ snapshotId: sharing.currentSnapshotId, label: `${sharing.branch} / ${sharing.stage} v${sharing.currentVersion}` }} onClose={() => setSharing(null)} />
       )}
       {targetForm && (
         <TargetForm

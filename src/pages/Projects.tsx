@@ -1,6 +1,6 @@
 // Left rail (project list) and the create / edit project form.
 import { useState, type FormEvent } from "react";
-import { IconFolder, IconLock, IconPlus, IconSearch, IconSettings } from "../components/icons";
+import { IconFolder, IconLock, IconPlus, IconSearch, IconSettings, IconShare } from "../components/icons";
 import { Modal } from "../components/Modal";
 import { useToast } from "../components/Toast";
 import { errMessage, pickFolder, projectCreate, projectUpdate } from "../lib/ipc";
@@ -16,6 +16,7 @@ interface RailProps {
   onView: (v: Exclude<RailView, "project">) => void;
   onAdd: () => void;
   onSearch: () => void;
+  onShare: () => void;
   onOpenShare: () => void;
   onLock: () => void;
 }
@@ -26,7 +27,7 @@ const TOOLS: { id: "overview" | "diff" | "passwords"; label: string; icon: strin
   { id: "passwords", label: "Passwords", icon: "✱" },
 ];
 
-export function ProjectRail({ projects, selectedId, view, onSelect, onView, onAdd, onSearch, onOpenShare, onLock }: RailProps) {
+export function ProjectRail({ projects, selectedId, view, onSelect, onView, onAdd, onSearch, onShare, onOpenShare, onLock }: RailProps) {
   return (
     <nav className="flex h-full w-[220px] shrink-0 flex-col border-r border-line bg-surface" aria-label="Main">
       <div className="px-4 pb-2 pt-4">
@@ -75,6 +76,9 @@ export function ProjectRail({ projects, selectedId, view, onSelect, onView, onAd
         </button>
         <button className="btn btn-quiet justify-start" onClick={onSearch}>
           <IconSearch /> Search keys <kbd className="ml-auto text-[12px] text-muted">Ctrl+K</kbd>
+        </button>
+        <button className="btn btn-quiet justify-start" onClick={onShare}>
+          <IconShare /> Share .env files
         </button>
         <button className="btn btn-quiet justify-start" onClick={onOpenShare}>
           <IconFolder /> Open share

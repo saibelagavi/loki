@@ -12,7 +12,9 @@ import type {
   DriftRow,
   Overview,
   ShareCreated,
+  ShareMapping,
   SharePreview,
+  ShareSelection,
   ValueDiffResult,
   AppInfo,
   AuditEntry,
@@ -143,12 +145,15 @@ export const credentialReveal = (id: number, field: "password" | "notes") => cal
 export const credentialCopy = (id: number, field: "password" | "notes") => call<number>("credential_copy", { id, field });
 export const passwordGenerate = (length: number, symbols: boolean) => call<string>("password_generate", { length, symbols });
 
+/** A fresh LOKI-generated pass key (shown to the sender before the file is created). */
+export const shareGenerateKey = () => call<string>("share_generate_key");
 /** Resolves to null if the save dialog was cancelled. */
-export const shareCreate = (snapshotId: number, keys: string[] | null, expiresDays: number | null, note: string | null) =>
-  call<ShareCreated | null>("share_create", { snapshotId, keys, expiresDays, note });
+export const shareCreate = (selections: ShareSelection[], passKey: string, expiresDays: number | null, note: string | null) =>
+  call<ShareCreated | null>("share_create", { selections, passKey, expiresDays, note });
 export const shareOpen = (path: string, passKey: string) => call<SharePreview>("share_open", { path, passKey });
-export const shareImport = (token: string, targetId: number, note: string | null) => call<Snapshot>("share_import", { token, targetId, note });
-export const shareSaveEnv = (token: string) => call<string | null>("share_save_env", { token });
+export const shareImport = (token: string, mappings: ShareMapping[], note: string | null) => call<Snapshot[]>("share_import", { token, mappings, note });
+/** Saves one .env of the open share; resolves to null if the save dialog was cancelled. */
+export const shareSaveEnv = (token: string, index: number) => call<string | null>("share_save_env", { token, index });
 export const shareDiscard = () => call<void>("share_discard");
 
 export const overview = () => call<Overview>("overview");

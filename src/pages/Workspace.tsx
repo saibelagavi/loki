@@ -1,6 +1,7 @@
 // The unlocked app: rail (tools + projects), the selected view, and lazily loaded pages.
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { OpenShareDialog } from "../components/OpenShareDialog";
+import { ShareDialog } from "../components/ShareDialog";
 import { IconPlus } from "../components/icons";
 import { useToast } from "../components/Toast";
 import { errMessage, projectList, settingsGet, targetList, vaultLock } from "../lib/ipc";
@@ -60,6 +61,7 @@ export default function Workspace({ onLocked }: Props) {
   const [showSearch, setShowSearch] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showOpenShare, setShowOpenShare] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [focus, setFocus] = useState<CompareFocus | null>(null);
   const [passwordFocus, setPasswordFocus] = useState<number | null>(null);
 
@@ -213,6 +215,7 @@ export default function Workspace({ onLocked }: Props) {
           }}
           onAdd={() => setShowNew(true)}
           onSearch={() => setShowSearch(true)}
+          onShare={() => setShowShare(true)}
           onOpenShare={() => setShowOpenShare(true)}
           onLock={lock}
         />
@@ -244,13 +247,15 @@ export default function Workspace({ onLocked }: Props) {
           />
         </Suspense>
       )}
+      {showShare && <ShareDialog onClose={() => setShowShare(false)} />}
       {showOpenShare && (
         <OpenShareDialog
           onClose={() => setShowOpenShare(false)}
           onImported={(projectId) => {
             setShowOpenShare(false);
             void reloadProjects();
-            if (projectId) openProject(projectId, "history");
+            if (projectId !== null) openProject(projectId, "compare");
+            else setView("overview");
           }}
         />
       )}
