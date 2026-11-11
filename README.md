@@ -91,12 +91,35 @@ result to jump straight to that cell in the compare matrix, highlighted.
 
 <img src="docs/screenshots/search.png" alt="Key search across projects showing where REDIS_URL is used and whether its values agree" width="860">
 
-### 📦 Secure share
-Hand a `.env` to a teammate as an encrypted `.lokishare` file that opens only with a one-time
-pass key LOKI generates (125 bits, shown once, never stored). Choose which keys, set an expiry,
-and send the file and the pass key through different channels.
+### 📦 Secure share: hand over `.env` files safely
+Onboarding a teammate, or moving to a new laptop? Bundle **whole projects, single `.env` files,
+or just some keys** into one encrypted `.lokishare` file that opens only with a one-time pass key.
+No server, no account, no copy-pasting secrets into chat.
 
-<img src="docs/screenshots/share.png" alt="Share securely dialog with key selection and expiry" width="860">
+**Sending** takes three steps (**Share .env files** in the left rail, or **Share** on any target):
+
+1. **Choose** what goes in. Tick projects or individual `.env` files, from any project, and use
+   *All keys ▾* to leave out what the recipient should not get (here, the live Stripe key).
+2. **Pass key.** LOKI generates it (25 characters, 125 bits) and shows it *before* the file exists,
+   with **Copy** and **New key**. You cannot create the file until you have copied it, so it never
+   gets lost. LOKI does not keep it. Optionally set an expiry and a note.
+3. **Send.** Save the file, then follow the guide: the file one way (email, Slack, a drive), the
+   pass key another way (a chat, a call, in person).
+
+| 1. Choose | 2. Pass key | 3. Send |
+|---|---|---|
+| <img src="docs/screenshots/share-choose.png" alt="Choosing projects, .env files and keys to share" width="290"> | <img src="docs/screenshots/share-passkey.png" alt="The generated pass key with Copy and New key" width="290"> | <img src="docs/screenshots/share-done.png" alt="How to send the share file and the pass key" width="290"> |
+
+**Receiving:** **Open share**, choose the file, type the pass key. You see key names only, never
+values, and each `.env` already points at its own project and target: an existing one gets a new
+version (nothing is overwritten), a missing one is created. One click imports everything, or save
+any single file as a plain `.env`.
+
+<img src="docs/screenshots/share-import.png" alt="Importing a share: each .env goes to its matching project and target" width="860">
+
+Under the hood: Argon2id + XChaCha20-Poly1305, the same as LOKI's vault; the file is tamper-proof,
+and without the pass key not even the project names are readable. Expiry is enforced by LOKI when
+importing. See [SECURITY.md](SECURITY.md#backups-and-shares).
 
 ### And also
 - **Import from anywhere:** pick a file, drop it on the window, paste it, or scan a project folder

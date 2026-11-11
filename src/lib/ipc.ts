@@ -161,6 +161,12 @@ export const driftCheck = () => call<DriftRow[]>("drift_check");
 
 // ---- native pickers and events (no secret values pass through these)
 export async function pickFile(): Promise<string | null> {
+  // End-to-end tests only: in the dev server a test can preset the picked file. This branch is
+  // removed from production builds (import.meta.env.DEV is false there).
+  if (import.meta.env.DEV) {
+    const preset = (window as unknown as { __lokiTestPickFile?: string }).__lokiTestPickFile;
+    if (preset) return preset;
+  }
   const r = await open({ multiple: false, directory: false, title: "Choose a .env file" });
   return typeof r === "string" ? r : null;
 }

@@ -194,7 +194,7 @@ export function OpenShareDialog({ onClose, onImported }: Props) {
                     </button>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <label className="text-[12px] text-muted" htmlFor={`dest-${it.index}`}>
+                    <label className="shrink-0 whitespace-nowrap text-[12px] text-muted" htmlFor={`dest-${it.index}`}>
                       Import into
                     </label>
                     <select id={`dest-${it.index}`} className="input" value={choice} onChange={(e) => setChoices((c) => ({ ...c, [it.index]: e.target.value }))}>

@@ -300,6 +300,12 @@ pub fn push_check(state: St, from_target: i64, to_target: i64) -> Result<pushche
 }
 
 fn save_path(app: &AppHandle, window: &WebviewWindow, file_name: &str, filter: Option<(&str, &[&str])>) -> Option<PathBuf> {
+    // End-to-end tests only: debug builds can skip the native dialog and save into a scratch
+    // folder. Release builds are compiled without this, so users always choose in the dialog.
+    #[cfg(debug_assertions)]
+    if let Some(dir) = std::env::var_os("LOKI_TEST_SAVE_DIR") {
+        return Some(PathBuf::from(dir).join(file_name));
+    }
     let mut b = app.dialog().file().set_parent(window).set_file_name(file_name);
     if let Some((name, exts)) = filter {
         b = b.add_filter(name, exts);
@@ -449,12 +455,21 @@ pub fn backup_export(app: AppHandle, window: WebviewWindow, state: St, backup_pa
     Ok(Some(path.to_string_lossy().to_string()))
 }
 
+fn open_path(app: &AppHandle, window: &WebviewWindow, filter: (&str, &[&str])) -> Option<PathBuf> {
+    // End-to-end tests only (debug builds): pick this file instead of showing the dialog.
+    #[cfg(debug_assertions)]
+    if let Some(p) = std::env::var_os("LOKI_TEST_OPEN_FILE") {
+        return Some(PathBuf::from(p));
+    }
+    app.dialog().file().set_parent(window).add_filter(filter.0, filter.1).blocking_pick_file().and_then(|p| p.into_path().ok())
+}
+
 /// Adds the projects in a `.loki` backup to this vault (never overwrites). `None` = cancelled.
 #[tauri::command(async)]
 pub fn backup_import(app: AppHandle, window: WebviewWindow, state: St, backup_password: String) -> Result<Option<ImportSummary>> {
     let password = Zeroizing::new(backup_password);
     gate(&state)?;
-    let Some(path) = app.dialog().file().set_parent(&window).add_filter("LOKI backup", &["loki"]).blocking_pick_file().and_then(|p| p.into_path().ok()) else {
+    let Some(path) = open_path(&app, &window, ("LOKI backup", &["loki"])) else {
         return Ok(None);
     };
     let bytes = std::fs::read(&path).map_err(|e| LokiError::Io(format!("Cannot read `{}`: {e}", path.display())))?;
