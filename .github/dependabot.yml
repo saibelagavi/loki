@@ -24,6 +24,11 @@ updates:
     groups:
       cargo-minor-and-patch:
         update-types: [minor, patch]
+    # Major bumps of the crypto crates (rand, hmac, sha2, argon2, chacha20poly1305) change their
+    # APIs and must move together, so they are ported by hand in one reviewed change.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps(cargo)"
 
