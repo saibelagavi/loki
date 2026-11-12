@@ -65,9 +65,13 @@ jobs:
           New-Item -ItemType Directory out | Out-Null
           Copy-Item src-tauri/target/release/bundle/msi/*.msi out/
           Copy-Item src-tauri/target/release/bundle/nsis/*-setup.exe out/
-          Get-ChildItem out | ForEach-Object {
-            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
-          } | Out-File -Encoding ascii out/SHA256SUMS.txt
+          # List the installers first: piping Get-ChildItem into Out-File would also pick up the
+          # half-written SHA256SUMS.txt itself.
+          $installers = @(Get-ChildItem out -File)
+          $lines = foreach ($f in $installers) {
+            "{0}  {1}" -f (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower(), $f.Name
+          }
+          $lines | Out-File -Encoding ascii out/SHA256SUMS.txt
           Get-Content out/SHA256SUMS.txt
 
       - name: Keep the Store package for Partner Center
