@@ -93,10 +93,14 @@ The screenshots use fake demo data only.
 
 ## Properties
 
-- Category: Developer tools
-- Personal information: LOKI does not access, collect or transmit personal information (everything
-  stays on the device).
-- Leave "tested to meet accessibility guidelines" unchecked until a screen-reader pass is done.
+- Category: Developer tools; secondary category: Security
+- Personal information: answer **Yes** with the privacy policy URL. LOKI transmits nothing, but it
+  stores credentials and secrets locally, and certification expects a policy for that.
+- Support info: website and email only; no phone or postal address (they are shown publicly).
+- Product declarations: OneDrive backups OFF (nothing is synced), record and broadcast OFF (games
+  only, and LOKI shows secrets), alternate drives on. Leave "tested to meet accessibility
+  guidelines" unchecked until a screen-reader pass is done.
+- System requirements: leave all unspecified (the package sets Windows 10 1903+).
 
 ## Age ratings questionnaire
 
