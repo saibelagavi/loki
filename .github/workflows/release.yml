@@ -1,0 +1,86 @@
+name: Release
+
+# Pushing a version tag (v0.1.0) builds LOKI from that exact commit and creates a DRAFT release:
+# the .msi and setup .exe with SHA-256 checksums. The maintainer reads the draft and publishes it.
+# The Store package (.msix) is kept as a workflow artifact for Partner Center, not offered for
+# download: it is unsigned until the Store signs it.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build installers and draft the release
+    runs-on: windows-latest
+    permissions:
+      contents: write # create the draft release and upload the installers
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Tag matches the app version
+        run: |
+          $v = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ("v$v" -ne $env:TAG) { throw "Tag $env:TAG does not match the app version $v" }
+          if (-not (Test-Path "docs/releases/v$v.md")) { throw "Release notes docs/releases/v$v.md are missing" }
+          "VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Checks
+        run: |
+          npm run lint
+          npm test
+          npm run check:offline
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test --locked --lib
+
+      # Build-time downloads only (WiX, NSIS, the offline WebView2 installer); the app itself
+      # never touches the network.
+      - name: Build installers (.msi, .exe)
+        run: npm run tauri build
+
+      - name: Build the Store package (.msix)
+        run: npm run build:msix -- --skip-build
+
+      - name: Collect installers and checksums
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item src-tauri/target/release/bundle/msi/*.msi out/
+          Copy-Item src-tauri/target/release/bundle/nsis/*-setup.exe out/
+          Get-ChildItem out | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Out-File -Encoding ascii out/SHA256SUMS.txt
+          Get-Content out/SHA256SUMS.txt
+
+      - name: Keep the Store package for Partner Center
+        uses: actions/upload-artifact@v7
+        with:
+          name: LOKI-${{ env.VERSION }}-store-msix
+          path: src-tauri/target/msix/*.msix
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Draft the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = (Get-ChildItem out).FullName
+          gh release create $env:TAG @files --draft --verify-tag --title "LOKI $env:VERSION" --notes-file "docs/releases/v$env:VERSION.md"

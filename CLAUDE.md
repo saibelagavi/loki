@@ -513,6 +513,11 @@ These were made without asking because they are small, reversible, or required b
   same vault as the .msi/.exe build). With virtualization on, Windows deletes the vault on
   uninstall. `build-msix.mjs` refuses to pack without these lines. Never remove them. Test the
   installed package only under a spare Windows account: it opens the real vault folder.
+- **Releases come from tags.** Bump the version in `package.json`, `Cargo.toml` and
+  `tauri.conf.json`, add `docs/releases/vX.Y.Z.md`, push tag `vX.Y.Z`: `release.yml` builds the
+  .msi/.exe with `SHA256SUMS.txt` into a DRAFT release (the maintainer publishes it) and keeps the
+  MSIX as a workflow artifact for Partner Center. Store listing text and screenshots live in
+  `docs/store/` (fake demo data only).
 - **Settings → Your data** shows the data folder (from `app_info`, a path, never a value) and says
   uninstalling keeps it and how to remove it. An MSIX uninstall cannot show any app UI, so this
   and the README/Store text are the only places to say it.
