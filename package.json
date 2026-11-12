@@ -37,5 +37,8 @@
   },
   "license": "Apache-2.0",
   "author": "Sainath Belagavi",
-  "description": "LOKI - Local Only Key Inventory: an encrypted, offline .env inventory for Windows"
+  "description": "LOKI - Local Only Key Inventory: an encrypted, offline .env inventory for Windows",
+  "overrides": {
+    "minimatch": "^11.0.8"
+  }
 }
