@@ -151,7 +151,9 @@ importing. See [SECURITY.md](SECURITY.md#backups-and-shares).
 4. Add a project, then import its `.env` files, or use **Scan folder** on the project directory.
 
 Works on Windows 10 and 11. The installer includes WebView2, so offline machines are fine.
-Your vault lives in `%LOCALAPPDATA%\LOKI\loki.db`; uninstalling LOKI never deletes it.
+Your vault lives in `%LOCALAPPDATA%\LOKI\loki.db` (Settings → Your data shows the folder).
+Uninstalling or reinstalling LOKI never deletes it; to remove everything, uninstall LOKI and then
+delete that folder.
 
 ## Security
 

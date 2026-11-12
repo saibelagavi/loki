@@ -1,9 +1,10 @@
-// Settings: security, appearance, push-check rules, master password, encrypted backup, audit log.
+// Settings: security, appearance, push-check rules, master password, encrypted backup, data folder,
+// audit log.
 import { useEffect, useState, type ReactNode } from "react";
 import { PasswordField } from "../components/PasswordField";
 import { useToast } from "../components/Toast";
 import { baseName, formatDate, plural } from "../lib/format";
-import { auditList, backupExport, backupImport, errMessage, rulesCatalog, settingsSet, vaultChangePassword } from "../lib/ipc";
+import { appInfo, auditList, backupExport, backupImport, clipboardCopyText, errMessage, rulesCatalog, settingsSet, vaultChangePassword } from "../lib/ipc";
 import { useSettings } from "../lib/settingsContext";
 import { getTheme, setTheme, type ThemeChoice } from "../lib/theme";
 import type { AuditEntry, CustomRule, RuleInfo, Settings, Severity } from "../types";
@@ -137,6 +138,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
 
         <ChangePassword />
         <Backup />
+        <YourData />
         <Audit />
       </div>
     </div>
@@ -332,6 +334,46 @@ function Backup() {
           </div>
         </div>
       </div>
+    </Section>
+  );
+}
+
+// Uninstalling never shows a LOKI window (the Store version cannot), so this is where people learn
+// that the vault outlives the app and how to remove it for good.
+function YourData() {
+  const toast = useToast();
+  const [dir, setDir] = useState<string | null>(null);
+
+  useEffect(() => {
+    appInfo()
+      .then((i) => setDir(i.dataDir))
+      .catch(() => undefined);
+  }, []);
+
+  async function copy() {
+    if (!dir) return;
+    try {
+      await clipboardCopyText(dir);
+      toast("Folder path copied", "success");
+    } catch (e) {
+      toast(errMessage(e), "error");
+    }
+  }
+
+  return (
+    <Section title="Your data" description="Everything LOKI keeps is in this folder: the encrypted vault, the safety copies made before upgrades, and window preferences.">
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="mono min-w-0 flex-1 select-all break-all rounded-md border border-line px-3 py-2 text-[13px]" aria-label="Data folder">
+          {dir ?? "…"}
+        </code>
+        <button className="btn" onClick={copy} disabled={!dir}>
+          Copy path
+        </button>
+      </div>
+      <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-[13px]">
+        <li>Uninstalling or reinstalling LOKI keeps this folder, so your vault is safe. This holds for the Microsoft Store version and the installer.</li>
+        <li>To remove everything, uninstall LOKI, then delete this folder. Export an encrypted backup first if you may need your data again.</li>
+      </ul>
     </Section>
   );
 }

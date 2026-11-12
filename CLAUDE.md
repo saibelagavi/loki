@@ -513,5 +513,8 @@ These were made without asking because they are small, reversible, or required b
   same vault as the .msi/.exe build). With virtualization on, Windows deletes the vault on
   uninstall. `build-msix.mjs` refuses to pack without these lines. Never remove them. Test the
   installed package only under a spare Windows account: it opens the real vault folder.
+- **Settings → Your data** shows the data folder (from `app_info`, a path, never a value) and says
+  uninstalling keeps it and how to remove it. An MSIX uninstall cannot show any app UI, so this
+  and the README/Store text are the only places to say it.
 - **Startup failures show a native message box** (`MessageBoxW` via a direct `user32` import, no
   crate), including a missing WebView2 Runtime, which the MSIX cannot bundle.

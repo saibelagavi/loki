@@ -6,6 +6,8 @@ export const STAGES: Stage[] = ["production", "staging", "preview", "dev", "loca
 export interface AppInfo {
   name: string;
   version: string;
+  /** The folder that holds the vault, e.g. C:\Users\Name\AppData\Local\LOKI. */
+  dataDir: string;
 }
 
 export interface VaultStatus {

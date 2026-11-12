@@ -44,7 +44,6 @@ impl VaultState {
         }
     }
 
-    #[cfg(test)]
     pub fn data_dir(&self) -> &std::path::Path {
         &self.data_dir
     }

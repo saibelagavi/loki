@@ -41,14 +41,17 @@ fn gate(state: &VaultState) -> Result<()> {
 // ------------------------------------------------------------------ app
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     name: &'static str,
     version: &'static str,
+    /// The folder that holds the vault. Shown in Settings so people know uninstalling keeps it.
+    data_dir: String,
 }
 
 #[tauri::command]
-pub fn app_info() -> AppInfo {
-    AppInfo { name: "LOKI", version: env!("CARGO_PKG_VERSION") }
+pub fn app_info(state: State<'_, VaultState>) -> AppInfo {
+    AppInfo { name: "LOKI", version: env!("CARGO_PKG_VERSION"), data_dir: state.data_dir().display().to_string() }
 }
 
 // ------------------------------------------------------------------ vault
