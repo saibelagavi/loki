@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { IconCheck, IconWarn } from "../components/icons";
 import { StageBadge } from "../components/StageBadge";
 import { useToast } from "../components/Toast";
-import { baseName, plural, targetName } from "../lib/format";
+import { baseName, plural, splitTicks, targetName } from "../lib/format";
 import { errMessage, exportEnv, pushCheck, pushCheckExport } from "../lib/ipc";
 import type { Finding, PushResult, Severity, Target } from "../types";
 import type { PageProps } from "./Workspace";
@@ -159,7 +159,17 @@ function FindingRow({ finding, tone }: { finding: Finding; tone: string }) {
         <IconWarn />
       </span>
       <div className="min-w-0">
-        <p className="text-[13px]">{finding.message}</p>
+        <p className="text-[13px]">
+          {splitTicks(finding.message).map((p, i) =>
+            p.code ? (
+              <code key={i} className="mono font-semibold">
+                {p.text}
+              </code>
+            ) : (
+              <span key={i}>{p.text}</span>
+            ),
+          )}
+        </p>
         <p className="mono text-[12px] text-muted">{finding.ruleId}</p>
       </div>
     </li>

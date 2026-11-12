@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { CELL, baseName, formatDate, plural, relativeTo, stageVar, targetFull } from "./format";
+import { CELL, baseName, formatDate, plural, relativeTo, splitTicks, stageVar, targetFull } from "./format";
 
 describe("format helpers", () => {
+  it("turns backticked key names in findings into code parts", () => {
+    expect(splitTicks("`API_KEY` is set in the source but missing in the target")).toEqual([
+      { text: "API_KEY", code: true },
+      { text: " is set in the source but missing in the target", code: false },
+    ]);
+    expect(splitTicks("no names here")).toEqual([{ text: "no names here", code: false }]);
+    expect(splitTicks("an unpaired ` stays text")).toEqual([{ text: "an unpaired ` stays text", code: false }]);
+  });
   it("maps stages to the stage colors from the design tokens", () => {
     expect(stageVar("production")).toBe("var(--prod)");
     expect(stageVar("staging")).toBe("var(--staging)");

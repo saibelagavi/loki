@@ -153,10 +153,10 @@ export default function History({ targets, reloadTargets, goTo }: PageProps) {
                 <td className="font-medium tabular-nums">
                   v{s.version} {i === 0 && <span className="chip ml-1">current</span>}
                 </td>
-                <td className="text-muted">{formatDate(s.createdAt)}</td>
+                <td className="whitespace-nowrap text-muted">{formatDate(s.createdAt)}</td>
                 <td className="tabular-nums">{s.keyCount}</td>
-                <td className="max-w-[200px] truncate">{s.note ?? <span className="text-muted">-</span>}</td>
-                <td className="mono max-w-[160px] truncate text-[12px] text-muted">{s.sourcePath ? baseName(s.sourcePath) : "pasted or restored"}</td>
+                <td className="max-w-[100px] truncate" title={s.note ?? undefined}>{s.note ?? <span className="text-muted">-</span>}</td>
+                <td className="mono max-w-[140px] truncate text-[12px] text-muted">{s.sourcePath ? baseName(s.sourcePath) : "pasted or restored"}</td>
                 <td>
                   <div className="flex flex-wrap justify-end gap-1">
                     <button className="btn btn-sm" onClick={() => view(s)} aria-expanded={viewing?.snapshot.id === s.id}>
@@ -173,8 +173,8 @@ export default function History({ targets, reloadTargets, goTo }: PageProps) {
                     <button className="btn btn-sm" onClick={() => doExport(s, "example")}>
                       Export .env.example
                     </button>
-                    <button className="btn btn-sm" onClick={() => setSharing(s)}>
-                      Share securely
+                    <button className="btn btn-sm" onClick={() => setSharing(s)} title="Share this version securely">
+                      Share
                     </button>
                   </div>
                 </td>

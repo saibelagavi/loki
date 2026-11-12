@@ -43,6 +43,16 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/**
+ * Splits a finding message on `backticks` (the core writes key names that way, which reads well in
+ * the exported Markdown checklist). Odd-indexed parts are code; an unpaired backtick stays text.
+ */
+export function splitTicks(message: string): { text: string; code: boolean }[] {
+  const parts = message.split("`");
+  if (parts.length % 2 === 0) return [{ text: message, code: false }];
+  return parts.map((text, i) => ({ text, code: i % 2 === 1 })).filter((p) => p.text !== "");
+}
+
 /** Last path segment, handling both Windows and POSIX separators. */
 export function baseName(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean);
