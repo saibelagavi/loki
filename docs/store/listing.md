@@ -9,7 +9,7 @@ LOKI - Local Only Key Inventory
 
 ## Short description
 
-An encrypted, offline home for every .env file you own. See what differs between staging and production, what is missing, and what would break on push day, without your secrets ever leaving your PC.
+An encrypted, offline home for your .env files and credentials. See what differs between staging and production, what is missing, and what would break on push day, without your secrets ever leaving your PC.
 
 ## Description
 
