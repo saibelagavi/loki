@@ -18,15 +18,44 @@ fn data_dir() -> Option<PathBuf> {
     std::env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("LOKI"))
 }
 
+/// Explains a startup failure in a native message box: release builds have no console, and
+/// without a WebView there is no window to show it in. The text never contains a value.
+#[cfg(windows)]
+fn startup_error(message: &str) {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, kind: u32) -> i32;
+    }
+    const MB_ICONERROR: u32 = 0x10;
+    let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let (text, caption) = (wide(message), wide("LOKI"));
+    // SAFETY: both buffers are NUL-terminated UTF-16 and outlive the call; no owner window.
+    unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), MB_ICONERROR) };
+}
+
+#[cfg(not(windows))]
+fn startup_error(_message: &str) {}
+
 pub fn run() {
     #[cfg(debug_assertions)]
     let started = std::time::Instant::now();
     let Some(dir) = data_dir() else {
         eprintln!("LOKI cannot start: the LOCALAPPDATA folder is not set.");
+        startup_error("LOKI cannot start: the LOCALAPPDATA folder is not set.");
         return;
     };
+    // The Microsoft Store (MSIX) build cannot bundle the WebView2 installer the .exe/.msi carry.
+    // Windows 11 and updated Windows 10 have it; anywhere else, say what to install.
+    if tauri::webview_version().is_err() {
+        startup_error(
+            "LOKI needs the Microsoft Edge WebView2 Runtime, which is not installed on this PC.\n\n\
+             Install \"WebView2 Runtime\" from Microsoft (free), then start LOKI again. \
+             Your vault is untouched.",
+        );
+        return;
+    }
 
-    tauri::Builder::default()
+    let result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(VaultState::new(dir.clone()))
         .setup(move |app| {
@@ -124,6 +153,9 @@ pub fn run() {
             commands::v2::overview,
             commands::v2::drift_check,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running LOKI");
+        .run(tauri::generate_context!());
+    if let Err(e) = result {
+        // Tauri startup errors name files and OS errors, never vault contents.
+        startup_error(&format!("LOKI could not start.\n\n{e}"));
+    }
 }

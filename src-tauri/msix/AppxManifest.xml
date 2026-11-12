@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX package manifest for the Microsoft Store build. `npm run build:msix` fills in the version.
+  Identity values come from Partner Center (Product management > Product identity) and must match
+  it exactly, or the upload is rejected.
+
+  Data safety: FileSystemWriteVirtualization is disabled (with the unvirtualizedResources
+  capability) so LOKI writes to the real %LOCALAPPDATA%\LOKI. With virtualization on, Windows would
+  redirect the vault into a package folder and DELETE it on uninstall, and the Store build and the
+  .msi/.exe build would see different vaults. Never remove these two lines.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
+  IgnorableNamespaces="uap rescap desktop6">
+
+  <Identity
+    Name="sainathbelagavi.LOKI-LocalOnlyKeyInventory"
+    Publisher="CN=5460F997-CA94-411E-9AD5-02A57B14112F"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>LOKI - Local Only Key Inventory</DisplayName>
+    <PublisherDisplayName>sainath belagavi</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Encrypted, offline inventory of .env files</Description>
+    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
+  </Properties>
+
+  <Dependencies>
+    <!-- 10.0.18362 (Windows 10 1903) is the first version that honours unvirtualizedResources. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="LOKI" Executable="loki.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="LOKI - Local Only Key Inventory"
+        Description="Encrypted, offline inventory of .env files"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+
+  <!-- No internetClient capability: LOKI never uses the network. -->
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+  </Capabilities>
+</Package>

@@ -50,6 +50,7 @@ cd src-tauri; cargo test; cargo clippy -- -D warnings; cd ..
 npm run test             # Vitest
 npm run lint
 npm run check:offline    # custom script, see "Offline guard"
+npm run build:msix       # Microsoft Store package (unsigned; the Store signs it)
 ```
 
 ## Folder structure
@@ -502,3 +503,15 @@ These were made without asking because they are small, reversible, or required b
 - **Day-to-day copy for the developer lives in `%LOCALAPPDATA%\Programs\LOKI\loki.exe`** (the
   desktop shortcut points there), so `npm run tauri build` never collides with a running LOKI.
   After a build, copy `src-tauri\target\release\loki.exe` there with LOKI closed.
+- **Microsoft Store build is an MSIX** (`npm run build:msix`, output in `src-tauri\target\msix`),
+  left unsigned because the Store signs it; the .msi/.exe stay for GitHub Releases. The manifest
+  is `src-tauri/msix/AppxManifest.xml`; its identity (`sainathbelagavi.LOKI-LocalOnlyKeyInventory`,
+  `CN=5460F997-…`, publisher display name) must match Partner Center exactly. Tile images come
+  from `scripts/msix-assets.ps1`.
+- **The MSIX must not virtualize AppData.** `FileSystemWriteVirtualization` is disabled with the
+  `unvirtualizedResources` capability, so the Store build uses the real `%LOCALAPPDATA%\LOKI` (the
+  same vault as the .msi/.exe build). With virtualization on, Windows deletes the vault on
+  uninstall. `build-msix.mjs` refuses to pack without these lines. Never remove them. Test the
+  installed package only under a spare Windows account: it opens the real vault folder.
+- **Startup failures show a native message box** (`MessageBoxW` via a direct `user32` import, no
+  crate), including a missing WebView2 Runtime, which the MSIX cannot bundle.

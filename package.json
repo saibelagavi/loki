@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "size": "node scripts/check-size.mjs",
-    "check:offline": "node scripts/check-offline.mjs"
+    "check:offline": "node scripts/check-offline.mjs",
+    "build:msix": "node scripts/build-msix.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
