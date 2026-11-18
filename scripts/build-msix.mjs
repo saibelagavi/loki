@@ -2,6 +2,7 @@
 //
 //   npm run build:msix                 release build of loki.exe, then pack
 //   npm run build:msix -- --skip-build  pack the existing src-tauri/target/release/loki.exe
+//   npm run build:msix -- --exe <path>  pack a given loki.exe (e.g. from a tagged release build)
 //
 // Needs the Windows 10/11 SDK (makeappx.exe, makepri.exe); WINDOWS_SDK_BIN overrides the folder.
 // The package is left unsigned on purpose: the Store signs it during certification.
@@ -38,15 +39,25 @@ if (pkg.version !== version || cargoVersion !== version) {
 }
 const msixVersion = `${version}.0`;
 
-// 2. The manifest must keep the vault outside the package (see the comment in AppxManifest.xml).
+// 2. The manifest must keep the vault outside the package, and only the vault (see the comment in
+//    AppxManifest.xml; Microsoft Store certification denied the broad AppData switch).
 const manifest = readFileSync(join(tauriDir, "msix", "AppxManifest.xml"), "utf8");
-for (const required of [
-  "<desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>",
-  '<rescap:Capability Name="unvirtualizedResources" />',
-]) {
-  if (!manifest.includes(required)) fail(`AppxManifest.xml lost a data-safety line: ${required}`);
+const body = manifest.replace(/<!--[\s\S]*?-->/g, "");
+const excluded = [...body.matchAll(/<virtualization:ExcludedDirectory>([^<]*)<\/virtualization:ExcludedDirectory>/g)].map((m) => m[1]);
+if (excluded.length !== 1 || excluded[0] !== "$(KnownFolder:LocalAppData)\\LOKI") {
+  fail(`exactly one excluded directory, $(KnownFolder:LocalAppData)\\LOKI, is allowed; found: ${JSON.stringify(excluded)}`);
 }
-if (/internetClient|privateNetworkClientServer/.test(manifest.replace(/<!--[\s\S]*?-->/g, ""))) {
+if (!body.includes('<rescap:Capability Name="unvirtualizedResources" />')) {
+  fail("AppxManifest.xml lost the unvirtualizedResources capability: the vault would be deleted on uninstall");
+}
+if (/desktop6:FileSystemWriteVirtualization|RegistryWriteVirtualization|ExcludedKey/.test(body)) {
+  fail("AppxManifest.xml turns off virtualization more broadly than %LOCALAPPDATA%\\LOKI; the Store denies that");
+}
+const minBuild = Number(/MinVersion="10\.0\.(\d+)\.0"/.exec(body)?.[1] ?? 0);
+if (minBuild < 22000) {
+  fail(`MinVersion must be Windows 11 (10.0.22000) or later: Windows 10 ignores ExcludedDirectories and would virtualize the vault (found build ${minBuild})`);
+}
+if (/internetClient|privateNetworkClientServer/.test(body)) {
   fail("AppxManifest.xml declares a network capability; LOKI must not");
 }
 
@@ -65,9 +76,17 @@ function sdkBin() {
 const bin = sdkBin();
 
 // 4. Release build of loki.exe (no installers: the MSIX replaces them for the Store).
-if (!skipBuild) run("npm run tauri build -- --no-bundle", [], { cwd: root, shell: true });
-const exe = join(tauriDir, "target", "release", "loki.exe");
-if (!existsSync(exe)) fail(`${exe} not found; run without --skip-build`);
+//    --exe <path> packs a given loki.exe instead, e.g. the one a tagged release build produced.
+const exeArg = process.argv.indexOf("--exe");
+let exe;
+if (exeArg !== -1) {
+  exe = resolve(process.argv[exeArg + 1] ?? "");
+  if (!existsSync(exe)) fail(`--exe ${exe} not found`);
+} else {
+  if (!skipBuild) run("npm run tauri build -- --no-bundle", [], { cwd: root, shell: true });
+  exe = join(tauriDir, "target", "release", "loki.exe");
+  if (!existsSync(exe)) fail(`${exe} not found; run without --skip-build`);
+}
 
 // 5. Package layout: loki.exe, images, manifest, resources.pri.
 rmSync(layout, { recursive: true, force: true });

@@ -508,11 +508,15 @@ These were made without asking because they are small, reversible, or required b
   is `src-tauri/msix/AppxManifest.xml`; its identity (`sainathbelagavi.LOKI-LocalOnlyKeyInventory`,
   `CN=5460F997-…`, publisher display name) must match Partner Center exactly. Tile images come
   from `scripts/msix-assets.ps1`.
-- **The MSIX must not virtualize AppData.** `FileSystemWriteVirtualization` is disabled with the
-  `unvirtualizedResources` capability, so the Store build uses the real `%LOCALAPPDATA%\LOKI` (the
-  same vault as the .msi/.exe build). With virtualization on, Windows deletes the vault on
-  uninstall. `build-msix.mjs` refuses to pack without these lines. Never remove them. Test the
-  installed package only under a spare Windows account: it opens the real vault folder.
+- **The MSIX excludes exactly one folder from virtualization: `%LOCALAPPDATA%\LOKI`.** Declared
+  with `virtualization:ExcludedDirectories` plus the `unvirtualizedResources` capability, so the
+  Store build uses the real vault folder (the same vault as the .msi/.exe build); virtualized,
+  Windows deletes the vault on uninstall. Store certification (2026-11-18, policy 10.6.3) denied
+  the broad `desktop6:FileSystemWriteVirtualization disabled` switch, so it is gone; registry
+  virtualization stays on. The folder exclusion only works on Windows 11, so the Store package's
+  `MinVersion` is `10.0.22000.0`; Windows 10 users use the .msi/.exe. `build-msix.mjs` refuses to
+  pack if any of this changes. Test the installed package only under a spare Windows account: it
+  opens the real vault folder. `--exe <path>` packs a given `loki.exe` (the tagged release build).
 - **Releases come from tags.** Bump the version in `package.json`, `Cargo.toml` and
   `tauri.conf.json`, add `docs/releases/vX.Y.Z.md`, push tag `vX.Y.Z`: `release.yml` builds the
   .msi/.exe with `SHA256SUMS.txt` into a DRAFT release (the maintainer publishes it) and keeps the

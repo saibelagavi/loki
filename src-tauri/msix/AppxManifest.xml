@@ -4,17 +4,25 @@
   Identity values come from Partner Center (Product management > Product identity) and must match
   it exactly, or the upload is rejected.
 
-  Data safety: FileSystemWriteVirtualization is disabled (with the unvirtualizedResources
-  capability) so LOKI writes to the real %LOCALAPPDATA%\LOKI. With virtualization on, Windows would
-  redirect the vault into a package folder and DELETE it on uninstall, and the Store build and the
-  .msi/.exe build would see different vaults. Never remove these two lines.
+  Data safety: exactly one folder, %LOCALAPPDATA%\LOKI, is excluded from file system write
+  virtualization (with the unvirtualizedResources capability), so the vault lives in the real
+  folder. Virtualized, Windows would redirect it into the package's private storage and DELETE it
+  on uninstall, and the Store build and the .msi/.exe build would see different vaults.
+  Everything else stays virtualized, registry writes included.
+
+  The per-folder exclusion only exists on Windows 11; Windows 10 ignores it. That is why
+  MinVersion is Windows 11 (10.0.22000): on Windows 10 the vault would be virtualized. Windows 10
+  users install the .msi/.exe from GitHub Releases instead.
+
+  Microsoft Store certification (2026-11-18) denied the broad desktop6 "disabled" switch; do not
+  bring it back. build-msix.mjs checks all of this before packing.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
-  IgnorableNamespaces="uap rescap desktop6">
+  xmlns:virtualization="http://schemas.microsoft.com/appx/manifest/virtualization/windows10"
+  IgnorableNamespaces="uap rescap virtualization">
 
   <Identity
     Name="sainathbelagavi.LOKI-LocalOnlyKeyInventory"
@@ -27,12 +35,16 @@
     <PublisherDisplayName>sainath belagavi</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>Encrypted, offline inventory of .env files</Description>
-    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
+    <virtualization:FileSystemWriteVirtualization>
+      <virtualization:ExcludedDirectories>
+        <virtualization:ExcludedDirectory>$(KnownFolder:LocalAppData)\LOKI</virtualization:ExcludedDirectory>
+      </virtualization:ExcludedDirectories>
+    </virtualization:FileSystemWriteVirtualization>
   </Properties>
 
   <Dependencies>
-    <!-- 10.0.18362 (Windows 10 1903) is the first version that honours unvirtualizedResources. -->
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" MaxVersionTested="10.0.26100.0" />
+    <!-- 10.0.22000 = Windows 11, the first version that honours ExcludedDirectories. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
 
   <Resources>

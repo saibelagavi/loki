@@ -89,7 +89,7 @@ The screenshots use fake demo data only.
 - Privacy policy: https://github.com/saibelagavi/loki/blob/main/PRIVACY.md
 - Website: https://github.com/saibelagavi/loki
 - Support contact: belagavisainath1@gmail.com
-- Minimum system requirements: Windows 10 version 1903 or later, x64
+- Minimum system requirements: Windows 11, x64. On Windows 10, use the installer from https://github.com/saibelagavi/loki/releases
 
 ## Properties
 
@@ -100,7 +100,7 @@ The screenshots use fake demo data only.
 - Product declarations: OneDrive backups OFF (nothing is synced), record and broadcast OFF (games
   only, and LOKI shows secrets), alternate drives on. Leave "tested to meet accessibility
   guidelines" unchecked until a screen-reader pass is done.
-- System requirements: leave all unspecified (the package sets Windows 10 1903+).
+- System requirements: leave all unspecified (the package sets Windows 11 as the minimum).
 
 ## Age ratings questionnaire
 
@@ -111,8 +111,17 @@ no purchases, no ads, no network access. Answer no to each of those.
 
 Restricted capabilities justification:
 
-runFullTrust: LOKI is a desktop app (Tauri, Rust) that needs full trust to run its own process and its WebView2 window.
-unvirtualizedResources: LOKI keeps the user's encrypted vault in %LOCALAPPDATA%\LOKI\loki.db. It must not be virtualized, because Windows would delete the user's only copy of their stored secrets on uninstall or reinstall, and the same vault is also used by LOKI's standalone installer. LOKI writes nothing else outside its own folder and never uses the network.
+runFullTrust:
+
+LOKI is a Win32 desktop application (a Rust core with a WebView2 user interface, built with Tauri) packaged as MSIX. runFullTrust is required to launch its desktop executable, loki.exe, as a full-trust process, which is how all packaged Win32 desktop apps run. LOKI installs no services or drivers, never requests administrator rights, and has no network access.
+
+unvirtualizedResources (resubmission after the 2026-11-18 report, 10.6.3; answers the three points asked):
+
+This submission changes the package as requested.
+1. Folder-specific exclusion only. File system write virtualization is now disabled for exactly one folder, $(KnownFolder:LocalAppData)\LOKI, declared with virtualization:FileSystemWriteVirtualization > ExcludedDirectories > ExcludedDirectory. The broad desktop6:FileSystemWriteVirtualization "disabled" declaration has been removed.
+2. The broad declaration is not needed for older Windows versions, because the package now targets Windows 11 only (TargetDeviceFamily Windows.Desktop, MinVersion 10.0.22000.0), where the folder exclusion is honored. Windows 10 users are served by our separate standalone installer outside the Store.
+3. Registry write virtualization remains enabled: the manifest has no RegistryWriteVirtualization or ExcludedKeys declaration. No other AppData directory is excluded; all other AppData writes stay virtualized.
+Why this one folder: LOKI is an offline password and secrets manager for developers. %LOCALAPPDATA%\LOKI holds the user's encrypted vault (an SQLite database with their .env secrets and saved passwords), automatic safety copies made before upgrades, and LOKI's WebView2 profile. If the folder were virtualized, Windows would delete it when the user uninstalls or reinstalls the app, destroying the only copy of the user's secrets with no way to recover them, and the Store version could not open the vault created by LOKI's standalone installer of the same app. LOKI writes to no other AppData location and never uses the network. Settings > Your data shows the folder and explains how to delete it.
 
 Notes for certification:
 
