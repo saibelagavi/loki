@@ -152,8 +152,8 @@ importing. See [SECURITY.md](SECURITY.md#backups-and-shares).
 
 Works on Windows 10 and 11. The installer includes WebView2, so offline machines are fine.
 Your vault lives in `%LOCALAPPDATA%\LOKI\loki.db` (Settings → Your data shows the folder).
-Uninstalling or reinstalling LOKI never deletes it; to remove everything, uninstall LOKI and then
-delete that folder.
+Uninstalling or reinstalling LOKI never deletes it. To remove everything, use
+**Settings → Your data → Delete all LOKI data**, then uninstall LOKI (or delete that folder by hand).
 
 ## Security
 

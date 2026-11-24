@@ -36,6 +36,65 @@ fn startup_error(message: &str) {
 #[cfg(not(windows))]
 fn startup_error(_message: &str) {}
 
+/// The package family name when running as the Microsoft Store (MSIX) package, else `None`.
+#[cfg(windows)]
+fn package_family_name() -> Option<String> {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetCurrentPackageFamilyName(length: *mut u32, name: *mut u16) -> i32;
+    }
+    const ERROR_INSUFFICIENT_BUFFER: i32 = 122;
+    let mut len: u32 = 0;
+    // SAFETY: a null buffer with length 0 only asks for the required length. An unpackaged
+    // process gets APPMODEL_ERROR_NO_PACKAGE instead.
+    if unsafe { GetCurrentPackageFamilyName(&mut len, std::ptr::null_mut()) } != ERROR_INSUFFICIENT_BUFFER || len == 0 {
+        return None;
+    }
+    let mut buf = vec![0u16; len as usize];
+    // SAFETY: `buf` holds `len` UTF-16 units, the length the first call asked for.
+    if unsafe { GetCurrentPackageFamilyName(&mut len, buf.as_mut_ptr()) } != 0 {
+        return None;
+    }
+    let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    String::from_utf16(&buf[..end]).ok().filter(|s| !s.is_empty())
+}
+
+#[cfg(not(windows))]
+fn package_family_name() -> Option<String> {
+    None
+}
+
+/// Where the window's WebView2 profile (a cache plus the theme choice) lives. The Store build
+/// keeps it in the package's own LocalCache folder, which Windows deletes on uninstall, so the
+/// one folder excluded from virtualization holds only the vault and its safety copies. The
+/// installer build, and any run with `LOKI_DATA_DIR`, keep it in `<data dir>\webview`.
+fn webview_dir(data_dir: &std::path::Path) -> PathBuf {
+    if std::env::var_os("LOKI_DATA_DIR").is_none() {
+        if let (Some(family), Some(local)) = (package_family_name(), std::env::var_os("LOCALAPPDATA")) {
+            return PathBuf::from(local).join("Packages").join(family).join("LocalCache").join("WebView");
+        }
+    }
+    data_dir.join("webview")
+}
+
+/// Argument for the helper copy LOKI starts as it exits after "Delete all LOKI data".
+const FINISH_PURGE_ARG: &str = "--finish-purge";
+
+/// Starts a windowless copy of LOKI that removes the leftover WebView profile once the WebView2
+/// processes have exited (they keep it locked until LOKI's own process is gone).
+fn spawn_finish_purge() {
+    let Ok(exe) = std::env::current_exe() else { return };
+    let mut cmd = std::process::Command::new(exe);
+    cmd.arg(FINISH_PURGE_ARG);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let _ = cmd.spawn();
+}
+
 pub fn run() {
     #[cfg(debug_assertions)]
     let started = std::time::Instant::now();
@@ -44,6 +103,17 @@ pub fn run() {
         startup_error("LOKI cannot start: the LOCALAPPDATA folder is not set.");
         return;
     };
+    if std::env::args().nth(1).as_deref() == Some(FINISH_PURGE_ARG) {
+        // Gives up after 30 s. Never touches anything while a vault file exists.
+        for _ in 0..60 {
+            if crate::core::vault::remove_leftovers(&dir) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        }
+        return;
+    }
+    let exit_dir = dir.clone();
     // The Microsoft Store (MSIX) build cannot bundle the WebView2 installer the .exe/.msi carry.
     // Windows 11 and updated Windows 10 have it; anywhere else, say what to install.
     if tauri::webview_version().is_err() {
@@ -59,13 +129,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(VaultState::new(dir.clone()))
         .setup(move |app| {
-            // Build the main window here so its WebView2 profile lives inside the LOKI data
-            // folder. Nothing is written outside it (the window is created hidden; the frontend
-            // shows it after the first paint).
+            // Build the main window here so its WebView2 profile lives in LOKI's own folders
+            // (see `webview_dir`), never in a folder named after the identifier. The window is
+            // created hidden; the frontend shows it after the first paint.
             std::fs::create_dir_all(&dir)?;
             let config = app.config().app.windows.first().cloned().ok_or("no window configured")?;
             WebviewWindowBuilder::from_config(app.handle(), &config)?
-                .data_directory(dir.join("webview"))
+                .data_directory(webview_dir(&dir))
                 .build()?;
             #[cfg(debug_assertions)]
             eprintln!("[loki dev] window created {} ms after start", started.elapsed().as_millis());
@@ -100,6 +170,7 @@ pub fn run() {
             commands::vault_unlock,
             commands::vault_lock,
             commands::vault_change_password,
+            commands::vault_delete_all,
             commands::vault_touch,
             commands::project_list,
             commands::project_create,
@@ -153,9 +224,17 @@ pub fn run() {
             commands::v2::overview,
             commands::v2::drift_check,
         ])
-        .run(tauri::generate_context!());
-    if let Err(e) = result {
+        .build(tauri::generate_context!());
+    match result {
+        // After "Delete all LOKI data", the rest of the data folder goes once the window is gone.
+        Ok(app) => app.run(move |handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                if handle.state::<VaultState>().purge_requested() && !crate::core::vault::remove_leftovers(&exit_dir) {
+                    spawn_finish_purge();
+                }
+            }
+        }),
         // Tauri startup errors name files and OS errors, never vault contents.
-        startup_error(&format!("LOKI could not start.\n\n{e}"));
+        Err(e) => startup_error(&format!("LOKI could not start.\n\n{e}")),
     }
 }

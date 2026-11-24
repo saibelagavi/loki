@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import iconUrl from "../../assets/loki-icon.svg";
 import { PasswordField } from "../components/PasswordField";
 import { useToast } from "../components/Toast";
 import { baseName } from "../lib/format";
-import { errMessage, vaultCreate, vaultUnlock } from "../lib/ipc";
+import { appInfo, errMessage, vaultCreate, vaultUnlock } from "../lib/ipc";
 
 interface Props {
   /** True when a vault file already exists (unlock); false means first run (create). */
@@ -17,8 +17,17 @@ export default function Unlock({ exists, notice, onUnlocked }: Props) {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataDir, setDataDir] = useState<string | null>(null);
   const toast = useToast();
   const creating = !exists;
+
+  // Tell people where the vault will live, and that it outlives the app, before it exists.
+  useEffect(() => {
+    if (!creating) return;
+    appInfo()
+      .then((i) => setDataDir(i.dataDir))
+      .catch(() => undefined);
+  }, [creating]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -95,6 +104,12 @@ export default function Unlock({ exists, notice, onUnlocked }: Props) {
           <div className="indeterminate h-full w-full" />
         </div>
         {busy && <p className="mt-1 text-[12px] text-muted">Deriving the encryption key. This takes about half a second.</p>}
+
+        {creating && dataDir && (
+          <p className="mt-4 border-t border-line pt-3 text-[12px] text-muted">
+            Your vault is saved in <code className="mono break-all text-chalk">{dataDir}</code>. Uninstalling or reinstalling LOKI keeps it. To remove it, use Settings &gt; Your data &gt; Delete all LOKI data.
+          </p>
+        )}
       </form>
     </main>
   );

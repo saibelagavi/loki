@@ -60,6 +60,8 @@ export const vaultLock = () => call<void>("vault_lock");
 export const vaultChangePassword = (oldPassword: string, newPassword: string) =>
   call<void>("vault_change_password", { oldPassword, newPassword });
 export const vaultTouch = () => call<void>("vault_touch");
+/** Deletes the vault and its safety copies, then LOKI closes itself a few seconds later. */
+export const vaultDeleteAll = (password: string, confirm: string) => call<void>("vault_delete_all", { password, confirm });
 
 // ---- projects & targets
 export const projectList = () => call<Project[]>("project_list");

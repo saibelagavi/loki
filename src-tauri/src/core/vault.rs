@@ -10,10 +10,17 @@ use crate::db::{migrations, models::VaultStatus, repo};
 use crate::error::{LokiError, Result};
 use rusqlite::{params, Connection, OpenFlags};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 pub const MIN_PASSWORD_LEN: usize = 8;
+
+/// What the user types to confirm deleting all LOKI data.
+pub const DELETE_CONFIRM: &str = "DELETE";
+
+/// The only files LOKI writes in its data folder, besides `backups\` and `webview\`.
+const DB_FILES: [&str; 4] = ["loki.db", "loki.db-journal", "loki.db-wal", "loki.db-shm"];
 
 struct Inner {
     keys: Option<VaultKeys>,
@@ -27,6 +34,8 @@ struct Inner {
 pub struct VaultState {
     data_dir: PathBuf,
     inner: Mutex<Inner>,
+    /// Set once the user deleted all data; the rest of the folder goes when LOKI exits.
+    purge_on_exit: AtomicBool,
 }
 
 fn check_new_password(p: &str) -> Result<()> {
@@ -41,6 +50,7 @@ impl VaultState {
         VaultState {
             data_dir,
             inner: Mutex::new(Inner { keys: None, conn: None, settings: Settings::default(), last_activity: Instant::now(), pending_share: None }),
+            purge_on_exit: AtomicBool::new(false),
         }
     }
 
@@ -276,6 +286,65 @@ impl VaultState {
         inner.last_activity = Instant::now();
         Ok(())
     }
+
+    /// Deletes the vault, its SQLite journal and the safety copies in `backups\`, after checking
+    /// the master password and the typed confirmation. Only files LOKI creates are touched, so a
+    /// data folder that also holds other files keeps them. The WebView profile cannot be removed
+    /// while the window is open; `remove_leftovers` removes it, and the folder, after LOKI exits.
+    pub fn delete_all_data(&self, password: &str, confirm: &str) -> Result<()> {
+        if confirm.trim() != DELETE_CONFIRM {
+            return Err(LokiError::Invalid(format!("Type {DELETE_CONFIRM} to confirm.")));
+        }
+        let mut g = self.guard();
+        let inner = &mut *g;
+        let (Some(conn), Some(_)) = (inner.conn.as_ref(), inner.keys.as_ref()) else {
+            return Err(LokiError::Locked);
+        };
+        let meta = repo::read_meta(conn)?.ok_or(LokiError::NoVault)?;
+        let keys = derive_keys(password.as_bytes(), &meta.salt, meta.params)?;
+        if !keys.check_verifier(&meta.verifier_nonce, &meta.verifier_ct) {
+            std::thread::sleep(Duration::from_secs(1));
+            return Err(LokiError::WrongPassword);
+        }
+        // Close the database before deleting it.
+        inner.keys = None;
+        inner.conn = None;
+        inner.settings = Settings::default();
+        inner.pending_share = None;
+        for name in DB_FILES {
+            match std::fs::remove_file(self.data_dir.join(name)) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.into()),
+                _ => {}
+            }
+        }
+        let backups = self.data_dir.join("backups");
+        if backups.is_dir() {
+            std::fs::remove_dir_all(&backups)?;
+        }
+        self.purge_on_exit.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+
+    /// True once `delete_all_data` succeeded in this session.
+    pub fn purge_requested(&self) -> bool {
+        self.purge_on_exit.load(Ordering::SeqCst)
+    }
+}
+
+/// Removes what is left in the data folder after `delete_all_data`: the WebView profile, then
+/// the folder itself if nothing else is in it. Refuses while a vault file exists. Returns true
+/// when no WebView profile is left. The profile is locked until the WebView2 processes exit,
+/// which happens only after LOKI's own process has gone, so LOKI retries from a helper copy
+/// of itself (`--finish-purge`, see `lib.rs`).
+pub fn remove_leftovers(data_dir: &std::path::Path) -> bool {
+    if DB_FILES.iter().any(|f| data_dir.join(f).exists()) {
+        return true;
+    }
+    let webview = data_dir.join("webview");
+    let gone = !webview.exists() || std::fs::remove_dir_all(&webview).is_ok();
+    // `remove_dir` (not `_all`) only succeeds on an empty folder.
+    let _ = std::fs::remove_dir(data_dir);
+    gone
 }
 
 #[cfg(test)]
@@ -313,6 +382,46 @@ mod tests {
         s.unlock("fake_password_1").unwrap();
         assert!(s.is_unlocked());
         cleanup(&s);
+    }
+
+    #[test]
+    fn delete_all_data_needs_the_password_and_the_confirmation() {
+        let s = temp_state("purge-guard");
+        s.create_with("fake_password_1", TEST_PARAMS).unwrap();
+        assert!(matches!(s.delete_all_data("fake_password_1", "delete"), Err(LokiError::Invalid(_))));
+        assert!(matches!(s.delete_all_data("fake_password_2", DELETE_CONFIRM), Err(LokiError::WrongPassword)));
+        assert!(s.is_unlocked() && s.db_path().exists());
+        s.lock();
+        assert!(matches!(s.delete_all_data("fake_password_1", DELETE_CONFIRM), Err(LokiError::Locked)));
+        assert!(s.db_path().exists() && !s.purge_requested());
+        std::fs::create_dir_all(s.data_dir().join("webview")).unwrap();
+        assert!(remove_leftovers(s.data_dir()));
+        assert!(s.data_dir().join("webview").exists(), "nothing is removed while a vault exists");
+        cleanup(&s);
+    }
+
+    #[test]
+    fn delete_all_data_removes_only_lokis_files() {
+        let s = temp_state("purge");
+        s.create_with("fake_password_1", TEST_PARAMS).unwrap();
+        let dir = s.data_dir().to_path_buf();
+        std::fs::create_dir_all(dir.join("backups")).unwrap();
+        std::fs::write(dir.join("backups").join("loki-before-schema-v2-x.db"), b"copy").unwrap();
+        std::fs::create_dir_all(dir.join("webview").join("EBWebView")).unwrap();
+        std::fs::write(dir.join("webview").join("EBWebView").join("Local State"), b"{}").unwrap();
+        std::fs::write(dir.join("not-loki.txt"), b"someone else's file").unwrap();
+
+        s.delete_all_data("fake_password_1", DELETE_CONFIRM).unwrap();
+        assert!(!s.is_unlocked());
+        assert!(!s.db_path().exists() && !dir.join("backups").exists());
+        assert!(!s.status().unwrap().exists && s.purge_requested());
+
+        assert!(remove_leftovers(&dir));
+        assert!(!dir.join("webview").exists());
+        assert!(dir.join("not-loki.txt").exists(), "files LOKI did not create are kept");
+        std::fs::remove_file(dir.join("not-loki.txt")).unwrap();
+        assert!(remove_leftovers(&dir));
+        assert!(!dir.exists(), "an emptied data folder is removed");
     }
 
     #[test]

@@ -523,7 +523,19 @@ These were made without asking because they are small, reversible, or required b
   MSIX as a workflow artifact for Partner Center. Store listing text and screenshots live in
   `docs/store/` (fake demo data only).
 - **Settings → Your data** shows the data folder (from `app_info`, a path, never a value) and says
-  uninstalling keeps it and how to remove it. An MSIX uninstall cannot show any app UI, so this
-  and the README/Store text are the only places to say it.
+  uninstalling keeps it and how to remove it. An MSIX uninstall cannot show any app UI, so this,
+  the create-vault screen (which names the folder) and the README/Store text are where it is said.
+- **Delete all LOKI data** (Settings → Your data, `vault_delete_all`): needs the vault unlocked,
+  the master password again and `DELETE` typed. It deletes only files LOKI creates (`loki.db`,
+  its `-journal`/`-wal`/`-shm`, `backups\`), closes LOKI, and on exit removes `webview\` and the
+  folder if empty. WebView2 keeps the profile locked until LOKI's process is gone, so LOKI starts a
+  windowless copy of itself (`loki.exe --finish-purge`) that retries for up to 30 s and never
+  touches anything while a vault file exists. Test it only with a scratch `LOKI_DATA_DIR`.
+- **The Store build keeps its WebView2 profile in the package's LocalCache**
+  (`%LOCALAPPDATA%\Packages\<family name>\LocalCache\WebView`, found with
+  `GetCurrentPackageFamilyName` via a direct `kernel32` import), which Windows deletes on uninstall,
+  so the folder excluded from virtualization holds only the vault and its safety copies.
+  Certification's second 10.6.3 report (2026-11-24) asked for exactly that ("minimum required
+  data"). The installer build keeps `<data dir>\webview`.
 - **Startup failures show a native message box** (`MessageBoxW` via a direct `user32` import, no
   crate), including a missing WebView2 Runtime, which the MSIX cannot bundle.

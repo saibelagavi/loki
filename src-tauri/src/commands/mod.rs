@@ -97,6 +97,21 @@ pub fn vault_change_password(state: St, old_password: String, new_password: Stri
     state.change_password(&old, &new)
 }
 
+/// Deletes the vault and its safety copies (password and typed confirmation required), then
+/// closes LOKI a few seconds later so the UI can say so. The rest of the data folder is removed
+/// on exit (`core::vault::remove_leftovers`, see `lib.rs`).
+#[tauri::command(async)]
+pub fn vault_delete_all(app: AppHandle, state: St, password: String, confirm: String) -> Result<()> {
+    let password = Zeroizing::new(password);
+    state.delete_all_data(&password, &confirm)?;
+    clipboard::clear_if_ours();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(4));
+        app.exit(0);
+    });
+    Ok(())
+}
+
 /// Called (throttled) by the UI on user input so the auto-lock timer counts real activity.
 #[tauri::command]
 pub fn vault_touch(state: St) {

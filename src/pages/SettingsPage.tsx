@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { PasswordField } from "../components/PasswordField";
 import { useToast } from "../components/Toast";
 import { baseName, formatDate, plural } from "../lib/format";
-import { appInfo, auditList, backupExport, backupImport, clipboardCopyText, errMessage, rulesCatalog, settingsSet, vaultChangePassword } from "../lib/ipc";
+import { appInfo, auditList, backupExport, backupImport, clipboardCopyText, errMessage, rulesCatalog, settingsSet, vaultChangePassword, vaultDeleteAll } from "../lib/ipc";
 import { useSettings } from "../lib/settingsContext";
 import { getTheme, setTheme, type ThemeChoice } from "../lib/theme";
 import type { AuditEntry, CustomRule, RuleInfo, Settings, Severity } from "../types";
@@ -361,7 +361,7 @@ function YourData() {
   }
 
   return (
-    <Section title="Your data" description="Everything LOKI keeps is in this folder: the encrypted vault, the safety copies made before upgrades, and window preferences.">
+    <Section title="Your data" description="Your encrypted vault and the safety copies LOKI makes before upgrades are kept in this folder.">
       <div className="flex flex-wrap items-center gap-2">
         <code className="mono min-w-0 flex-1 select-all break-all rounded-md border border-line px-3 py-2 text-[13px]" aria-label="Data folder">
           {dir ?? "…"}
@@ -372,9 +372,65 @@ function YourData() {
       </div>
       <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-[13px]">
         <li>Uninstalling or reinstalling LOKI keeps this folder, so your vault is safe. This holds for the Microsoft Store version and the installer.</li>
-        <li>To remove everything, uninstall LOKI, then delete this folder. Export an encrypted backup first if you may need your data again.</li>
+        <li>To remove everything, use Delete all LOKI data below, then uninstall LOKI. Deleting this folder by hand does the same.</li>
       </ul>
+      <DeleteAllData />
     </Section>
+  );
+}
+
+function DeleteAllData() {
+  const [pw, setPw] = useState("");
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  async function remove() {
+    setError(null);
+    setBusy(true);
+    try {
+      await vaultDeleteAll(pw, typed);
+      setPw("");
+      setDone(true);
+    } catch (e) {
+      setError(errMessage(e));
+      setPw("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <p className="mt-5 rounded-md border border-line px-3 py-2 text-[13px]" role="status">
+        All LOKI data was deleted. LOKI closes in a few seconds; you can uninstall it now.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-5 grid max-w-[420px] gap-3 border-t border-line pt-4">
+      <h3 className="text-[13px] font-semibold">Delete all LOKI data</h3>
+      <p className="text-[13px] text-muted">
+        Deletes the vault, every safety copy and LOKI's window data from this folder, then closes LOKI. This cannot be undone. Export an encrypted backup first if you may need anything again.
+      </p>
+      <PasswordField label="Master password" value={pw} onChange={setPw} disabled={busy} autoComplete="current-password" />
+      <label className="grid gap-1 text-[13px]">
+        <span>Type DELETE to confirm</span>
+        <input className="input mono" value={typed} onChange={(e) => setTyped(e.target.value)} disabled={busy} autoComplete="off" spellCheck={false} />
+      </label>
+      {error && (
+        <p className="text-[13px] text-prod" role="alert">
+          {error}
+        </p>
+      )}
+      <div>
+        <button className="btn btn-danger" onClick={remove} disabled={busy || !pw || typed.trim() !== "DELETE"}>
+          {busy ? "Deleting…" : "Delete all data and close LOKI"}
+        </button>
+      </div>
+    </div>
   );
 }
 

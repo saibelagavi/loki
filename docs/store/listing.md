@@ -38,9 +38,11 @@ PRIVATE BY DESIGN
 • Copies stay out of Windows clipboard history and clear themselves
 
 YOUR DATA
-Your vault lives in %LOCALAPPDATA%\LOKI (Settings > Your data shows the folder). Uninstalling or reinstalling LOKI keeps it. To remove everything, uninstall LOKI and then delete that folder. LOKI cannot recover a forgotten master password.
+Your vault lives in %LOCALAPPDATA%\LOKI (Settings > Your data shows the folder). Uninstalling or reinstalling LOKI keeps it. To remove everything, use Settings > Your data > Delete all LOKI data, then uninstall LOKI. LOKI cannot recover a forgotten master password.
 
 LOKI is open source under the Apache License 2.0: github.com/saibelagavi/loki
+
+The Store version requires Windows 11. On Windows 10, use the installer from github.com/saibelagavi/loki/releases
 
 ## Product features (one per line, up to 20)
 
@@ -57,15 +59,13 @@ Fully offline: no network code, no account, no telemetry
 Argon2id and XChaCha20-Poly1305 encryption
 Dark and light themes, full keyboard use
 
-## Search terms (up to 7)
+## Keywords (up to 7, 40 characters each, 21 words in all)
 
-env
-dotenv
-environment variables
-secrets manager
-developer tools
-config diff
 api keys
+LOKI key inventory
+.env file manager
+offline .env inventory
+secret management offline
 
 ## Screenshots and captions (upload in this order)
 
@@ -89,7 +89,8 @@ The screenshots use fake demo data only.
 - Privacy policy: https://github.com/saibelagavi/loki/blob/main/PRIVACY.md
 - Website: https://github.com/saibelagavi/loki
 - Support contact: belagavisainath1@gmail.com
-- Minimum system requirements: Windows 11, x64. On Windows 10, use the installer from https://github.com/saibelagavi/loki/releases
+- Minimum system requirements: this listing has no "Additional system requirements" field, so the
+  Windows 11 note is the last line of the Description instead. The package's MinVersion enforces it.
 
 ## Properties
 
@@ -115,18 +116,30 @@ runFullTrust:
 
 LOKI is a Win32 desktop application (a Rust core with a WebView2 user interface, built with Tauri) packaged as MSIX. runFullTrust is required to launch its desktop executable, loki.exe, as a full-trust process, which is how all packaged Win32 desktop apps run. LOKI installs no services or drivers, never requests administrator rights, and has no network access.
 
-unvirtualizedResources (resubmission after the 2026-11-18 report, 10.6.3; answers the three points asked):
+unvirtualizedResources (third submission, version 0.1.2, after the 2026-11-24 report; numbered to match the six points asked):
 
-This submission changes the package as requested.
-1. Folder-specific exclusion only. File system write virtualization is now disabled for exactly one folder, $(KnownFolder:LocalAppData)\LOKI, declared with virtualization:FileSystemWriteVirtualization > ExcludedDirectories > ExcludedDirectory. The broad desktop6:FileSystemWriteVirtualization "disabled" declaration has been removed.
-2. The broad declaration is not needed for older Windows versions, because the package now targets Windows 11 only (TargetDeviceFamily Windows.Desktop, MinVersion 10.0.22000.0), where the folder exclusion is honored. Windows 10 users are served by our separate standalone installer outside the Store.
-3. Registry write virtualization remains enabled: the manifest has no RegistryWriteVirtualization or ExcludedKeys declaration. No other AppData directory is excluded; all other AppData writes stay virtualized.
-Why this one folder: LOKI is an offline password and secrets manager for developers. %LOCALAPPDATA%\LOKI holds the user's encrypted vault (an SQLite database with their .env secrets and saved passwords), automatic safety copies made before upgrades, and LOKI's WebView2 profile. If the folder were virtualized, Windows would delete it when the user uninstalls or reinstalls the app, destroying the only copy of the user's secrets with no way to recover them, and the Store version could not open the vault created by LOKI's standalone installer of the same app. LOKI writes to no other AppData location and never uses the network. Settings > Your data shows the folder and explains how to delete it.
+1. Exact files written to $(KnownFolder:LocalAppData)\LOKI, and nothing else:
+- loki.db: the user's encrypted vault (SQLite). It holds key names, values encrypted with XChaCha20-Poly1305, settings and a local audit log. The master password is never stored.
+- loki.db-journal: SQLite's rollback journal. It exists only while a write is in progress and is deleted when the write completes.
+- backups\loki-before-schema-v<N>-<timestamp>.db: a full copy of loki.db written only when an app update upgrades the database format, so an update can never corrupt the only copy of the vault.
+In this version the WebView2 browser profile moved out of this folder into the package's own LocalCache folder, which stays virtualized and is removed by Windows on uninstall.
 
-Notes for certification:
+2. How virtualization breaks the core function: LOKI is an offline vault for developer secrets (.env values and passwords) and is often the only place a user keeps them. Virtualized, the vault would live in the package's private storage, which Windows deletes on uninstall, on reinstall, and on Settings > Apps > Reset. A user reinstalling LOKI would silently and permanently lose every secret, with no way to recover it. Users who move from our standalone installer to the Store version would also get a split vault: virtualized reads still see the real folder, but the first write copies the database into package storage, after which the two versions show different data without any warning.
 
-LOKI works fully offline and needs no account. On first launch, choose any master password (for example: test-password-2026). To try it: Add project, add a target, then Import .env > Paste and paste:
+3. Why non-restricted storage is insufficient: ApplicationData.LocalFolder, LocalCacheFolder and other package-local storage have the same uninstall and reset deletion described in point 2. RoamingFolder is designed to sync and is also deleted on uninstall, which conflicts with LOKI's promise that nothing leaves the PC. Documents and other user folders are often redirected to OneDrive by Known Folder Move, which would upload the vault to the cloud. %LOCALAPPDATA% is the standard local, non-roaming, per-user location for this kind of data.
+
+4. Data that remains after uninstall: only the files listed in point 1 (the encrypted vault and any pre-upgrade safety copies). Removal: Settings > Your data > Delete all LOKI data (new in this version). After the user re-enters the master password and types DELETE, it deletes those files and the folder, then closes LOKI. The user can also delete the folder in File Explorer; Settings > Your data shows its path with a Copy path button.
+
+5. Users are informed: the create-vault screen, shown before any data is written, names the folder, says uninstalling or reinstalling keeps it, and says how to remove it. Settings > Your data repeats this, and so do the Store description ("YOUR DATA") and the project README.
+
+6. The exclusion is limited to that one folder and to the minimum data: the manifest declares exactly one ExcludedDirectory, $(KnownFolder:LocalAppData)\LOKI. There is no RegistryWriteVirtualization or ExcludedKeys declaration, so registry virtualization stays enabled, and no other AppData directory is excluded. The folder holds only the files in point 1. LOKI has no network access.
+
+Notes for certification (field on the separate Additional testing information page; no credentials there):
+
+Third submission (version 0.1.2) after the 10.6.3 reports of 2026-11-18 and 2026-11-24. The unvirtualizedResources justification answers the six points asked, in order. New in this version for that review: Settings > Your data > Delete all LOKI data, a notice on the create-vault screen naming the data folder, and the WebView2 profile moved into package storage so %LOCALAPPDATA%\LOKI holds only the encrypted vault and its safety copies.
+
+LOKI works fully offline and needs no account. On first launch, create any master password (LOKI has no accounts, so there is nothing to log in to). To try it: Add project, add a target, then Import .env > Paste and paste:
 API_URL=https://api.example.test
 STRIPE_KEY=fake_value_1
 DEBUG=false
-Then open the compare matrix, Push check and Diff checker. All values in this note are fake.
+Then open the compare matrix, Push check and Diff checker. To check data removal: Settings > Your data > Delete all LOKI data. All values in this note are fake.
