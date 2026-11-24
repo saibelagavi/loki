@@ -536,6 +536,11 @@ These were made without asking because they are small, reversible, or required b
   `GetCurrentPackageFamilyName` via a direct `kernel32` import), which Windows deletes on uninstall,
   so the folder excluded from virtualization holds only the vault and its safety copies.
   Certification's second 10.6.3 report (2026-11-24) asked for exactly that ("minimum required
-  data"). The installer build keeps `<data dir>\webview`.
+  data"). The installer build keeps `<data dir>\webview`. This is the one write outside the app
+  data folder, and it is the package's own storage. The data folder itself is created only with
+  the vault, so launching and quitting leaves nothing behind.
+- **Partner Center's restricted-capability justification boxes keep only 500 characters.** The
+  first two unvirtualizedResources answers were cut there. Keep each one at or under 500 and put
+  detail in Notes for certification (`docs/store/listing.md` has both).
 - **Startup failures show a native message box** (`MessageBoxW` via a direct `user32` import, no
   crate), including a missing WebView2 Runtime, which the MSIX cannot bundle.

@@ -131,11 +131,13 @@ pub fn run() {
         .setup(move |app| {
             // Build the main window here so its WebView2 profile lives in LOKI's own folders
             // (see `webview_dir`), never in a folder named after the identifier. The window is
-            // created hidden; the frontend shows it after the first paint.
-            std::fs::create_dir_all(&dir)?;
+            // created hidden; the frontend shows it after the first paint. The data folder itself
+            // is created only with the vault, so starting LOKI and quitting leaves nothing there.
+            let webview = webview_dir(&dir);
+            std::fs::create_dir_all(&webview)?;
             let config = app.config().app.windows.first().cloned().ok_or("no window configured")?;
             WebviewWindowBuilder::from_config(app.handle(), &config)?
-                .data_directory(webview_dir(&dir))
+                .data_directory(webview)
                 .build()?;
             #[cfg(debug_assertions)]
             eprintln!("[loki dev] window created {} ms after start", started.elapsed().as_millis());
